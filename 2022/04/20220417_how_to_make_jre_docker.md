@@ -205,6 +205,16 @@ RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/s
 COPY --from=jre-build jre-11 $JAVA_HOME
 ```
 
+## 생성된 JRE 확인
+기존 JDK 314MB -> 89.4MB로 줄어 들었다.
+```shell
+]$ docker images
+REPOSITORY                        TAG                            IMAGE ID            CREATED             SIZE
+amazoncorretto                    11-alpine-jre                  13d16945f5e1        4 minutes ago       89.4MB
+<none>                            <none>                         bf94a2883935        4 minutes ago       523M
+```
+- ```<none>```은 중간단계 이미지 이다.
+
 ## 참고 URL
 * [Alpine Linux용 glibc - sgerrand](https://github.com/sgerrand/alpine-pkg-glibc)
 * [Java11, jlink and Docker](https://greut.medium.com/java11-jlink-and-docker-2fec885fb2d)
