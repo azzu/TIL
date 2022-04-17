@@ -9,7 +9,7 @@
 ## JRE Docker 컨테이너 만들기
 Springboot와 같은 Java를 사용하는 환경에서 Docker 컨테이너를 통해 배포/운영하게 될 경우,   
 [OpenJDK](https://hub.docker.com/_/openjdk)와 같은 JDK를 Base Image로 Docker 컨테이너를 생성하는 경우가 많은데,   
-JDK를 Base로 생성하게 되면, 최종 생성되는 컨테이너의 사이즈가 매우 커지게 된다.   
+JDK를 Base로 생성하게 되면, 최종 생성되는 컨테이너의 사이즈가 매우 커지게 된다(300MB!).   
 ![Docker Hub JDK-11 Base Image](/resources/static/img/docker_hub-openjdk-11.png)   
 ```javac```와 같은 JDK로 컴파일된 최종 결과물(Springboot의 경우 *.jar)을 실행할때는 JRE만 있어도 충분하며,   
 JRE를 Base로 컨테이너를 생성하면 컨테이너 사이즈도 작아져 리소스 사용시에 효율적이다.   
@@ -17,7 +17,7 @@ JRE를 Base로 컨테이너를 생성하면 컨테이너 사이즈도 작아져 
 하지만, JDK Docker 컨테이너 중에는 JRE 컨테이너가 없는 경우도 있는데, 이 경우에는 JDK에 포함되어있는 ```jlink```를 이용하여   
 JRE 컨테이너를 만들어 줄 수 있다.   
 ```jlink```명령어에 대한 사용법은 [여기](https://docs.oracle.com/javase/9/tools/jlink.htm)를 참고하면 되고, 아래의 2가지 방법으로 원하는 모듈을 가져 올 수 있다.
-### 명령어를 통한 JRE 모듈리스트 보기
+### 1. 명령어를 통한 JRE 모듈리스트 보기
 ```java --list-modules```를 통해 모듈 리스트를 보고 *java.** 로 시작하는 모듈들을 ```jlink```에 실행시 지정하면 해당 모듈들로 jre를 생상해 준다.
 ```shell
 ]$ java --list-modules
@@ -94,10 +94,10 @@ jdk.xml.dom@11.0.11
 jdk.zipfs@11.0.11
 ```
 
-### 온라인 툴 이용하는 방법
+### 2. 온라인 툴 이용하는 방법
 https://justinmahar.github.io/easyjre/ 를 이용하여 ```jlink```명령어와 옵션들을 생성한다.   
 
-## jlink 명령어
+#### jlink 명령어
 ```shell
 ]$ $JAVA_HOME/bin/jlink --output jre-11 --compress=2 --no-header-files --no-man-pages \
     --strip-debug --release-info $JAVA_HOME/release --module-path ../jmods \
@@ -111,7 +111,43 @@ https://justinmahar.github.io/easyjre/ 를 이용하여 ```jlink```명령어와 
     jdk.naming.dns,jdk.scripting.nashorn,jdk.security.auth,jdk.security.jgss,jdk.xml.dom,jdk.zipfs, \
     jdk.jdwp.agent,jdk.pack,jdk.scripting.nashorn.shell,jdk.jcmd,jdk.jfr
 ```
-### Dockerfile
+
+여기까지의 내용을 바탕으로 Dockerfile을 작성해 보자.   
+용량을 줄이기 위해 Multi Stage방법을 이용하여 JRE Docker 이미지를 생성하였다.
+```dockerfile
+FROM amazoncorretto:11 AS jre-build
+
+RUN $JAVA_HOME/bin/jlink --output jre-11 --compress=2 --no-header-files --no-man-pages \
+    --strip-debug --release-info $JAVA_HOME/release --module-path ../jmods \
+    --add-modules java.base,java.datatransfer,java.desktop,java.instrument,java.logging, \
+    java.management,java.management.rmi,java.naming,java.prefs,java.rmi,java.security.sasl, \
+    java.xml,jdk.internal.vm.ci,jdk.jfr,jdk.management,jdk.management.jfr,jdk.management.agent, \
+    jdk.net,jdk.sctp,jdk.unsupported,jdk.naming.rmi,java.compiler,jdk.aot,jdk.internal.vm.compiler, \
+    jdk.internal.vm.compiler.management,java.se,java.net.http,java.scripting,java.security.jgss, \
+    java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml.crypto,jdk.accessibility, \
+    jdk.charsets,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.dynalink,jdk.httpserver,jdk.jsobject,jdk.localedata, \
+    jdk.naming.dns,jdk.scripting.nashorn,jdk.security.auth,jdk.security.jgss,jdk.xml.dom,jdk.zipfs, \
+    jdk.jdwp.agent,jdk.pack,jdk.scripting.nashorn.shell,jdk.jcmd,jdk.jfr
+
+FROM alpine:3.15
+
+ENV LANG=C.UTF-8 LC_ALL=en_US.UTF-8
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm
+ENV PATH="$JAVA_HOME/bin:${PATH}"
+COPY --from=jre-build jre-11 $JAVA_HOME
+```
+
+## 하지만...java가 실행되지 않는다!!!!
+해당 Dockerfile로 이미지를 생성하고 해당 이미지를 base로 docker build를 해서 실행하면 ```java```파일을 찾을 수 없다면서 실행되지 않는다.   
+왜일까? 이유는, alpine linux가 초경량을 지향하면서 내부에 *```glibc```모듈 대신에 ```musl```을 사용하기 때문이다.*   
+고로 alpine linux base 이미지에 ```glibc```를 설치해 준다.
+Apine Linux용 ```glibc```는 [sgerrand github](https://github.com/sgerrand/alpine-pkg-glibc)에서 찾아서 설치할 수 있다.   
+설치 후 ```ln```을 통해 라이브러리 링크를 걸어주고, ```glibc-bin```, ```glibc-i18n```까지 설치하고, ```localedef```로 locale설정까지 해주면 된다.
+```shell
+/usr/glibc-compat/bin/localedef -i en_US -f UTF-8 en_US.UTF-8
+```
+
+## 최종 Dockerfile
 ```dockerfile
 FROM amazoncorretto:11 AS jre-build
 
@@ -170,6 +206,7 @@ COPY --from=jre-build jre-11 $JAVA_HOME
 ```
 
 ## 참고 URL
+* [Alpine Linux용 glibc - sgerrand](https://github.com/sgerrand/alpine-pkg-glibc)
 * [Java11, jlink and Docker](https://greut.medium.com/java11-jlink-and-docker-2fec885fb2d)
 * [JRE를 쉽게 만들 수 있게 도와주는 온라인 툴](https://justinmahar.github.io/easyjre/)
 * [Amazon Corretto JRE11 Dockerfile](https://github.com/corretto/corretto-docker/blob/d98afb2f45401891e62a0651499b929f8da823eb/11/jre/alpine/Dockerfile)
