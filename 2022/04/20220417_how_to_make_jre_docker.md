@@ -5,7 +5,7 @@
 * 하나의 Dockerfile로 생성하도록 한다.
 ## 필요 환경
 * docker(podman도 가능)
-## 
+## 순서
 ## 참고 URL
 * [Java11, jlink and Docker](https://greut.medium.com/java11-jlink-and-docker-2fec885fb2d)
 * [JRE를 쉽게 만들 수 있게 도와주는 온라인 툴](https://justinmahar.github.io/easyjre/)
