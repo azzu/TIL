@@ -9,3 +9,5 @@
 ## 분류
 ### Docker
 * [JDK Docker 이미지로 JRE 만들기](2022/04/20220417_how_to_make_jre_docker.md)
+* [Cloudwatch log 내용에 따라 OpenSearch index별로 나눠저장하기](2022/04/20220422_AWS_Cloudwatch_subscription_to_OpenSearchService.md)
+### 기타
