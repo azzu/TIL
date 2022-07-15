@@ -3,4 +3,4 @@
 * [Backend 인터뷰 질문](https://github.com/ksundong/backend-interview-question)
 
 ## 개발 컨텐츠
-* [고퀄리티 개발 컨텐츠 모음]()https://github.com/Integerous/goQuality-dev-contents
+* [고퀄리티 개발 컨텐츠 모음](https://github.com/Integerous/goQuality-dev-contents)
