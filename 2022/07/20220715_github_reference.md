@@ -4,3 +4,6 @@
 
 ## 개발 컨텐츠
 * [고퀄리티 개발 컨텐츠 모음](https://github.com/Integerous/goQuality-dev-contents)
+
+## 한글 문서
+* [토리맘의 한글라이즈](https://godekdls.github.io/)
